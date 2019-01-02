@@ -1,6 +1,6 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
-Require Import Rstruct.
+Require Import Rstruct mean_value_theorem.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -143,130 +143,6 @@ Section Rabs_power.
 End Rabs_power.
 Notation "`| r `|^ p" := (Rabs_power r p) (format "'`|' r '`|^' p", at level 35).
 
-Section concave.
-  Definition concave_on A f :=
-    forall x y z, A x -> A y -> A z -> x < y < z ->
-                  (f z - f y)/(z - y) <= (f y - f x) / (y - x).
-
-  Lemma cncv_subs A B f: (forall x, A x -> B x) -> concave_on B f -> concave_on A f.
-  Proof. by move => subs conc x y z /subs bx /subs yb /subs zb; apply/conc. Qed.
-
-  Lemma cncv_prp f a b: a < b -> concave_on (fun x => a <= x <= b) f ->
-                         forall r, 0 < r < 1 -> r * f b + (1 - r) * f a <= f (r * b + (1 - r) * a).
-  Proof.
-    move => alb conc r ineq.
-    suff: (1 - r) * (f (r * b + (1 - r) * a) - f a) >= r * (f b - f ( r * b + (1 - r) * a)) by lra.
-    apply/Rle_ge.
-    apply/(Rmult_le_reg_l (/(1-r))); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    rewrite (Rmult_comm _ r).
-    apply/(Rmult_le_reg_l (/r)); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    apply/(Rmult_le_reg_r (/(b - a))); first by apply/Rinv_0_lt_compat; lra.
-    have /=:= conc a (r * b + (1 - r) * a) b.
-    have ->: b - ( r * b + (1 - r) * a) = (1 - r)* (b - a) by ring.
-    have ->: r * b + (1 - r)* a - a = r * (b - a) by ring.
-    rewrite !/Rdiv !Rinv_mult_distr; try lra.
-    suff ineq': a < r * b + (1 - r) * a < b by lra.
-    split; first by apply/Rle_lt_trans/Rplus_lt_le_compat/Rle_refl/Rmult_lt_compat_l/alb; lra.
-    apply/Rlt_le_trans.
-    - by apply/Rplus_le_lt_compat/Rmult_lt_compat_l/alb; try lra; apply/Rle_refl.
-    lra.  
-  Qed.
-End concave.
-  
-Section ln_strictly_concave.   
-  Definition strictly_concave_on A f :=
-    forall x y z, A x -> A y -> A z -> x < y < z ->
-                    (f z - f y)/(z - y) < (f y - f x)/ (y - x).
-
-  Lemma cncv_scnc A f: strictly_concave_on A f -> concave_on A f.
-  Proof. by move => cnc x y z Ax Ay Az ineq; apply/Rlt_le/cnc. Qed.
-
-  Lemma scnc_subs A B f: (forall x, A x -> B x) ->
-                         strictly_concave_on B f -> strictly_concave_on A f.
-  Proof. by move => subs conc x y z /subs bx /subs yb /subs zb; apply/conc. Qed.
-  
-  Lemma scnc_prp f a b: a < b -> strictly_concave_on (fun x => a <= x <= b) f ->
-                         forall r, 0 < r < 1 -> r * f b + (1 - r) * f a < f (r * b + (1 - r) * a).
-  Proof.
-    move => alb conc r ineq.
-    suff: (1 - r) * (f (r * b + (1 - r) * a) - f a) > r * (f b - f ( r * b + (1 - r) * a)) by lra.
-    apply/Rlt_gt.
-    apply/(Rmult_lt_reg_l (/(1-r))); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    rewrite (Rmult_comm _ r).
-    apply/(Rmult_lt_reg_l (/r)); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    apply/(Rmult_lt_reg_r (/(b - a))); first by apply/Rinv_0_lt_compat; lra.
-    have /=:= conc a (r * b + (1 - r) * a) b.
-    have ->: b - ( r * b + (1 - r) * a) = (1 - r)* (b - a) by ring.
-    have ->: r * b + (1 - r)* a - a = r * (b - a) by ring.
-    rewrite !/Rdiv !Rinv_mult_distr; try lra.
-    suff ineq': a < r * b + (1 - r) * a < b by lra.
-    split; first by apply/Rle_lt_trans/Rplus_lt_le_compat/Rle_refl/Rmult_lt_compat_l/alb; lra.
-    apply/Rlt_le_trans.
-    - by apply/Rplus_le_lt_compat/Rmult_lt_compat_l/alb; try lra; apply/Rle_refl.
-    lra.  
-  Qed.
-  
-  Lemma ln_derivable_pt x: 0 < x -> derivable_pt ln x.
-  Proof.
-    rewrite /derivable_pt/derivable_pt_abs => ineq.
-    by exists (/x); apply/derivable_pt_lim_ln.
-  Qed.
-
-  Lemma derivable_pt_lim_id x: derivable_pt_lim id x 1.
-  Proof.
-    move => eps eg0; exists (mkposreal _ eg0) => h neq /= ineq.
-    have ->: (x + h - x) / h = 1 by field.
-    by split_Rabs; lra.
-  Qed.
-
-  Lemma derive_pt_unique f x P Q: derive_pt f x P = derive_pt f x Q.
-  Proof. by apply/derive_pt_eq; move: Q => [f'x lim]. Qed.
-  
-  Lemma ln_scnc: strictly_concave_on (fun x => 0 < x) ln.
-  Proof.
-    move => x y z /= xg0 yg0 zg0 [] ygx zgy.
-    have diff1: forall z, x < z < y -> derivable_pt id z.
-    - by move => c ineq; exists 1; apply derivable_pt_lim_id.
-    have diff2: forall z, x < z < y -> derivable_pt ln z.
-    - by move => c ineq; apply/ln_derivable_pt; lra.
-    have [c ineq | c ineq | c [ineq /=]]:= MVT id ln x y diff1 diff2 ygx.
-    - by apply/derivable_continuous_pt; exists 1; apply/derivable_pt_lim_id.
-    - by apply/derivable_continuous_pt/ln_derivable_pt; lra.
-    have ->: derive_pt id c (diff1 c ineq) = 1.
-    - by rewrite -(derive_pt_id c); apply/derive_pt_unique.
-    rewrite Rmult_1_r => ->.
-    have ->: derive_pt ln c (diff2 c ineq) = /c.
-    - by apply/derive_pt_eq/derivable_pt_lim_ln; lra.
-    rewrite Rmult_comm /Rdiv Rmult_assoc Rinv_r; try lra; rewrite Rmult_1_r.
-    have diff3: forall x, y < x < z -> derivable_pt id x.
-    - by move => d ineq'; exists 1; apply derivable_pt_lim_id.
-    have diff4: forall x, y < x < z -> derivable_pt ln x.
-    - by move => d ineq'; apply/ln_derivable_pt; lra.
-    have [d ineq' | d ineq' | d [ineq' /=]]:= MVT id ln y z diff3 diff4 zgy.
-    - by apply/derivable_continuous_pt; exists 1; apply/derivable_pt_lim_id.
-    - by apply/derivable_continuous_pt/ln_derivable_pt; lra.
-    have ->: derive_pt id d (diff3 d ineq') = 1.
-    - by rewrite -(derive_pt_id d); apply/derive_pt_unique.
-    rewrite Rmult_1_r => ->.
-    have ->: derive_pt ln d (diff4 d ineq') = /d.
-    - apply/derive_pt_eq/derivable_pt_lim_ln; lra.
-    rewrite Rmult_comm -Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    apply/Rinv_lt_contravar; try lra.
-    by apply/Rmult_lt_0_compat; lra.
-  Qed.
-  
-  Lemma ln_le_inv x y: 0 < x -> 0 < y -> ln x <= ln y -> x <= y.
-  Proof.
-    move => x0 y0.
-    case => [ineq | eq]; first exact/Rlt_le/ln_lt_inv.
-    by rewrite (ln_inv x y) //; exact/Rle_refl.
-  Qed.
-End ln_strictly_concave.
-
 Section Young's_inequality.
   Lemma Young's_inequality (a b p q: R):
       1 <= p -> 1 <= q -> /p + /q = 1 -> a * b <= `|a`|^p / p + `|b`|^q/q.
@@ -323,4 +199,4 @@ Section Young's_inequality.
     rewrite Rabs_mult ln_mult; try by split_Rabs; lra.
     by rewrite !ln_exp ![_ * /_]Rmult_comm -!Rmult_assoc !Rinv_l; try lra.
   Qed.
-End Young's_inequality. 
+End Young's_inequality.

@@ -8,15 +8,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Local Notation "'[' a ';oo)'" := (make_subset (fun x => a <= x)).
-Local  Notation "'(' a ';oo)'" := (make_subset (fun x => a < x)).
-Local  Notation "'(oo;' b ']'" := (make_subset (fun x => x <= b)).
-Local  Notation "'(oo;' b ')'" := (make_subset (fun x => x < b)).
-Local Notation "'[' a ';' b ']'" := (make_subset (fun x => a <= x <= b)).
-Local  Notation "'(' a ';' b ']'" := (make_subset (fun x => a < x <= b)).
-Local  Notation "'[' a ';' b ')'" := (make_subset (fun x => a <= x < b)).
-Local  Notation "'(' a ';' b ')'" := (make_subset (fun x => a < x < b)).
-
 Local Open Scope R_scope.
 Section mean_value_theorem.
   Arguments limit_in {X} {X'}.

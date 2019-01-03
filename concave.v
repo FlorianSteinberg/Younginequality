@@ -2,7 +2,6 @@ Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
 Require Import Rstruct mean_value_theorem.
 From rlzrs Require Import mf_set.
-From metric Require Import metric standard.
 From Coquelicot Require Import Coquelicot.
 
 Set Implicit Arguments.
@@ -53,7 +52,7 @@ End convex_sets.
 
 Section concave.
   Arguments limit_in {X} {X'}.
-  Implicit Types (f: R_met -> R_met) (A B: subset R).
+  Implicit Types (f: Base R_met -> Base R_met) (A B: subset R).
   
   Definition concave_on A f :=
     forall x y z, A x -> A y -> A z -> x < y < z ->
@@ -245,7 +244,7 @@ Section concave.
 End concave.
 
 Section strictly_concave.
-  Implicit Types (f: R_met -> R_met) (A B: subset R).
+  Implicit Types (f: Base R_met -> Base R_met) (A B: subset R).
   Notation "'[' a ';' b ']'" := (make_subset (fun x => a <= x <= b)).
   Notation "'(' a ';' b ']'" := (make_subset (fun x => a < x <= b)).
   Notation "'[' a ';' b ')'" := (make_subset (fun x => a <= x < b)).

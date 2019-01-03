@@ -1,5 +1,9 @@
-This repsitory contains some proofs I need for formalizing lp-spaces. In particular it contains a proof of Young's inequality which is the main tool for proving Hoelder's and Minkowskis inequalities.
-The inequality is proven using the tools provided by Coq's standard library and Coquelicot. The files have only been tested with Coq version 8.8.2.
+This repsitory contains some proofs I need for formalizing lp-spaces.
+In particular it contains a proof of Young's inequality which is the main tool for proving Hoelder's and Minkowskis inequalities.
+The inequality is proven using the tools provided by Coq's standard library and Coquelicot.
+The additional dependencies are some ssreflect basics and some parts from my rlzrs library.
+Both of these can be found on github.
+The files have only been tested with Coq version 8.8.2.
 Youngs inequality states that for all positive a, b and p q hoelder associates it holds that a * b <= a^p/p + b^q/q and is important due to its applications in functional analysis.
 The power-function from the standard library is defined as Rpower a p := exp (p * ln a) and thus unspecified when a is zero.
 To mend this, the file defines a new function Rabs_power, that is equal to exp (p * ln |a|) and zero when a is zero. This should be the correct definition for the applications in lp theory.

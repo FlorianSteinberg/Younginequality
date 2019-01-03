@@ -1,12 +1,14 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
-Require Import Rstruct mean_value_theorem.
+Require Import Rstruct mean_value_theorem concave.
+From Coquelicot Require Import Coquelicot.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Local Open Scope R_scope.
+Local Open Scope mf_scope.
 Section Rabs_power.
   Context (p: R).
   Definition Rabs_power r p := if eqr r 0 then 0 else Rpower (Rabs r) p.
@@ -139,8 +141,56 @@ Section Rabs_power.
     rewrite ln_exp -Rmult_assoc Rinv_r//Rmult_1_l => ineq ineq'.
     by rewrite exp_ln; split_Rabs; lra.
   Qed.
+  
+  Lemma Rpower_cont q x: 0 < x -> continuous (Rpower^~ q) x.
+  Proof.
+    move => ineq.
+    apply/(continuous_comp (fun x => q * ln x) exp).
+    - apply/continuous_mult; first exact/continuous_const.
+      apply/continuity_pt_filterlim/derivable_continuous_pt.
+      exists (/x).
+      exact/derivable_pt_lim_ln.
+    exact/continuity_pt_filterlim/derivable_continuous_pt/derivable_pt_exp.
+  Qed.
 
+  Lemma Rapw_cont q x: 0 < q -> continuous (fun x => Rabs_power x q) x.
+  Proof.
+    move => gt.
+    case: (total_order_T 0 x) => [[ineq | <-] | ineq].
+    - apply/continuity_pt_filterlim/(continuity_pt_ext_loc (fun x => Rpower x q)); last first.
+      + exact/continuity_pt_filterlim/Rpower_cont.
+      have pos: 0 < x /2 by lra.
+      exists (mkposreal _ pos) => y /=.
+      rewrite /ball/=/AbsRing_ball/=/abs/=/minus/=/plus/=/opp/=/Rabs_power => ineq'.
+      have ->: eqr y 0 = false by apply/eqP; split_Rabs; lra.
+      by rewrite Rabs_pos_eq//; split_Rabs;lra.
+    - move => A [[eps ineq]].
+      rewrite Rapw0 => bll.
+      have pos: 0 < `|eps`|^(/q) by apply/Rapw_lt; lra.
+      exists (mkposreal _ pos) => y bll'; apply/bll; move: bll'.
+      rewrite /ball /=/AbsRing_ball/abs/=!minus_zero_r => bll'.
+      rewrite Rabs_pos_eq; last exact/Rapw_pos.
+      apply/Rlt_le_trans.
+      + apply/Rapw_inc => //.
+        rewrite -(Rabs_pos_eq (`|eps`|^/q)) in bll'; last exact/Rapw_pos.
+        exact/bll'.
+      rewrite Rapw_inv; try lra.
+      by rewrite Rabs_pos_eq; try lra.
+    apply/continuity_pt_filterlim.
+    apply/(continuity_pt_ext_loc (fun x => Rpower (-x) q)).
+    - have pos: 0 < (- x) /2 by lra.
+      exists (mkposreal _ pos) => y /=.
+      rewrite /ball/=/AbsRing_ball/=/abs/=/minus/=/plus/=/opp/=/Rabs_power => ineq'.
+      have ->: eqr y 0 = false by apply/eqP; split_Rabs; lra.
+      rewrite -{2}(Ropp_involutive y) Rabs_Ropp.
+      by rewrite Rabs_pos_eq//; split_Rabs;lra.
+    apply/continuity_pt_filterlim/(continuous_comp Ropp (fun x => Rpower x q)).
+    - exact/continuous_opp.
+    by apply/Rpower_cont; lra.
+  Qed.
 End Rabs_power.
+
+
 Notation "`| r `|^ p" := (Rabs_power r p) (format "'`|' r '`|^' p", at level 35).
 
 Section Young's_inequality.
@@ -172,13 +222,13 @@ Section Young's_inequality.
     apply/Rle_trans; last first.
     - case: (total_order_T (Rpower (Rabs a) p) (Rpower (Rabs b) q)) => [[ineq | eq] | ineq].
       + have:
-          /q * ln (Rpower (Rabs b) q) + (1 - /q) * ln (Rpower (Rabs a) p)
+          /p * ln (Rpower (Rabs a) p) + (1 - /p) * ln (Rpower (Rabs b) q)
           <
-          ln (/q * Rpower (Rabs b) q + (1 - /q) * Rpower (Rabs a) p).
+          ln (/p * Rpower (Rabs a) p + (1 - /p) * Rpower (Rabs b) q).
         * apply/scnc_prp; try lra.
           apply/scnc_subs/ln_scnc => x /= [ineq' _].
           exact/Rlt_le_trans/ineq'/exp_pos.
-        have ->: 1 - /q = /p by lra.
+        have ->: 1 - /p = /q by lra.
         by rewrite ![/ _ * _]Rmult_comm ![_*/p + _]Rplus_comm /Rdiv => ineq'; apply/Rlt_le/ineq'.
       + rewrite eq /Rdiv; have ->: /q = 1 - /p by lra.
         have ->: Rpower (Rabs b) q * /p + Rpower (Rabs b) q * (1 - /p) = Rpower (Rabs b) q by ring.
@@ -188,12 +238,12 @@ Section Young's_inequality.
              ln (Rpower (Rabs b) q) by ring.
         exact/Rle_refl.
       have:
-        /p * ln (Rpower (Rabs a) p) + (1 - /p) * ln (Rpower (Rabs b) q)
+        /q * ln (Rpower (Rabs b) q) + (1 - /q) * ln (Rpower (Rabs a) p)
         <
-        ln (/p * Rpower (Rabs a) p + (1 - /p) * Rpower (Rabs b) q).
+        ln (/q * Rpower (Rabs b) q + (1 - /q) * Rpower (Rabs a) p).
       + apply/scnc_prp; try lra.
         by apply/scnc_subs/ln_scnc => x /= [ineq' _]; first exact/Rlt_le_trans/ineq'/exp_pos.
-      have ->: 1- /p = /q by lra.
+      have ->: 1- /q = /p by lra.
       by rewrite ![/ _ * _]Rmult_comm /Rdiv ![_*/p + _]Rplus_comm  => ineq'; apply/Rlt_le/ineq'.
     have [n0 n0']: a <> 0 /\ b <> 0 by apply/Rmult_neq_0_reg; lra.
     rewrite Rabs_mult ln_mult; try by split_Rabs; lra.

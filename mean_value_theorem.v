@@ -1,14 +1,25 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
 Require Import Rstruct.
+From rlzrs Require Import mf_set.
 From Coquelicot Require Import Coquelicot.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Notation "'[' a ';oo)'" := (make_subset (fun x => a <= x)).
+Local  Notation "'(' a ';oo)'" := (make_subset (fun x => a < x)).
+Local  Notation "'(oo;' b ']'" := (make_subset (fun x => x <= b)).
+Local  Notation "'(oo;' b ')'" := (make_subset (fun x => x < b)).
+Local Notation "'[' a ';' b ']'" := (make_subset (fun x => a <= x <= b)).
+Local  Notation "'(' a ';' b ']'" := (make_subset (fun x => a < x <= b)).
+Local  Notation "'[' a ';' b ')'" := (make_subset (fun x => a <= x < b)).
+Local  Notation "'(' a ';' b ')'" := (make_subset (fun x => a < x < b)).
+
 Local Open Scope R_scope.
 Section mean_value_theorem.
+  Arguments limit_in {X} {X'}.
   Lemma derivable_pt_lim_id x: derivable_pt_lim id x 1.
   Proof.
     move => eps eg0; exists (mkposreal _ eg0) => h neq /= ineq.
@@ -18,7 +29,6 @@ Section mean_value_theorem.
 
   Lemma derive_pt_unique f x P Q: derive_pt f x P = derive_pt f x Q.
   Proof. by apply/derive_pt_eq; move: Q => [f'x lim]. Qed.
-
   
   Definition cnst_ext f a b x: R :=
     match Rleb x a with
@@ -31,7 +41,7 @@ Section mean_value_theorem.
   
   Lemma cont_cext (f: Base R_met -> Base R_met) a b x:
     a <= b ->
-    limit_in _ _ f (fun c => a <= c <= b) x (f x) ->
+    limit_in f (fun c => a <= c <= b) x (f x) ->
     continuity_pt (cnst_ext f a b) x.
   Proof.
     move => alb lmt eps eg0; rewrite /cnst_ext.
@@ -96,7 +106,7 @@ Section mean_value_theorem.
 
   Theorem mean_value_theorem (f: Base R_met -> Base R_met) a b: a < b ->
     (forall c, a < c < b -> derivable_pt f c) ->
-    (forall x, limit_in _ _ f (fun c => a <= c <= b) x (f x)) ->
+    (forall x, limit_in f (fun c => a <= c <= b) x (f x)) ->
     exists c, a < c < b /\ forall y, derivable_pt_lim f c y -> (f b - f a) = y * (b - a).
   Proof.
     move => alb deriv cont.
@@ -117,213 +127,4 @@ Section mean_value_theorem.
     rewrite Rmult_1_r /cnst_ext.
     by do 3 (case: ifP => /RlebP; intros; try lra).
   Qed.
-End mean_value_theorem.    
-  
-Section concave.
-  Definition concave_on A f :=
-    forall x y z, A x -> A y -> A z -> x < y < z ->
-                  (f z - f y) / (z - y) <= (f y - f x) / (y - x).
-
-  Lemma cncv_subs A B f: (forall x, A x -> B x) -> concave_on B f -> concave_on A f.
-  Proof. by move => subs conc x y z /subs bx /subs yb /subs zb; apply/conc. Qed.
-
-  Lemma cncv_prp f a b: a < b -> concave_on (fun x => a <= x <= b) f ->
-                         forall r, 0 < r < 1 -> r * f b + (1 - r) * f a <= f (r * b + (1 - r) * a).
-  Proof.
-    move => alb conc r ineq.
-    suff: (1 - r) * (f (r * b + (1 - r) * a) - f a) >= r * (f b - f ( r * b + (1 - r) * a)) by lra.
-    apply/Rle_ge.
-    apply/(Rmult_le_reg_l (/(1-r))); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    rewrite (Rmult_comm _ r).
-    apply/(Rmult_le_reg_l (/r)); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    apply/(Rmult_le_reg_r (/(b - a))); first by apply/Rinv_0_lt_compat; lra.
-    have /=:= conc a (r * b + (1 - r) * a) b.
-    have ->: b - ( r * b + (1 - r) * a) = (1 - r)* (b - a) by ring.
-    have ->: r * b + (1 - r)* a - a = r * (b - a) by ring.
-    rewrite !/Rdiv !Rinv_mult_distr; try lra.
-    suff ineq': a < r * b + (1 - r) * a < b by lra.
-    split; first by apply/Rle_lt_trans/Rplus_lt_le_compat/Rle_refl/Rmult_lt_compat_l/alb; lra.
-    apply/Rlt_le_trans.
-    - by apply/Rplus_le_lt_compat/Rmult_lt_compat_l/alb; try lra; apply/Rle_refl.
-    lra.  
-  Qed.
-
-  Definition increasing_on (A: R -> Prop) f :=
-    forall x y, A x -> A y -> x <= y -> f x <= f y.
-
-  Lemma incn_inc f: increasing f <-> increasing_on (fun _ => True) f.
-  Proof. by split => [inc x y _ _ | inc x y]; apply/inc. Qed.
-
-  Definition decreasing_on (A: R -> Prop) f :=
-    forall x y, A x -> A y -> x <= y -> f y <= f x.
-
-  Lemma dec_inc A f:
-    decreasing_on A f <-> increasing_on A (fun x => - f x).
-  Proof.
-    split => ass x y Ax Ay ineq .
-    - have: f y <= f x by apply/ass.
-      lra.
-    have: - f x <= - f y by apply/ass.
-    lra.
-  Qed.
-
-  Lemma continuity_pt_limit_in f a b x:
-    continuity_pt f x -> limit_in R_met R_met f (fun x' => a <= x' <= b) x (f x).
-  Proof.
-    move => cont eps eg0.
-    have [delta [dg0 prp]]:= cont eps eg0.
-    exists delta; split => // y [_ dst].
-    case E: (eqr x y); move: E => /eqP; first move ->; last by intros; apply/prp.
-    suff -> : dist R_met (f y) (f y) = 0 by lra.
-    by apply/dist_refl.
-  Qed.
-
-  Lemma out_limit_in f a b x:
-    x < a \/ b < x -> limit_in R_met R_met f (fun x' => a <= x' <= b) x (f x).
-  Proof.
-    move => [] ineq eps eg0.
-    - exists (a - x); split => [ | y []]; first lra.
-      by rewrite/dist/=/R_dist/=; split_Rabs; lra.
-    exists (x - b); split => [ | y []]; first lra.
-    by rewrite/dist/=/R_dist/=; split_Rabs; lra.
-  Qed.
-    
-  Lemma diff_decr_cncv_open f f' a b:
-    (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
-    decreasing_on (fun x => a < x < b) f' -> concave_on (fun x => a < x < b) f.
-  Proof.
-    move => diff decr x y z /= xineq yineq zineq [] ygx zgy.
-    have diffyz: forall x, y < x < z -> derivable_pt f x.
-    - by move => x'; exists (f' x'); apply diff; lra.
-    have [ | x' [ineqs prp]]:= mean_value_theorem zgy diffyz.
-    - move => x'.
-      case E: (Rltb x' y); first by apply/out_limit_in; left; move: E => /RltbP.
-      case E': (Rltb z x'); first by apply/out_limit_in; right; move: E' => /RltbP.
-      apply/continuity_pt_limit_in/derivable_continuous_pt.
-      exists (f' x'); apply/diff.
-      by move: E => /RltbP/Rnot_lt_le; move: E' => /RltbP/Rnot_lt_le;lra.
-    rewrite (prp (f' x')) /Rdiv; last by apply/diff; lra.
-    rewrite Rmult_assoc Rinv_r; try lra; rewrite Rmult_1_r.
-    have diffxy: forall x', x < x' < y -> derivable_pt f x'.
-    - by move => x''; exists (f' x''); apply diff; lra.
-    have [ | x'' [ineqs' prp']]:= mean_value_theorem ygx diffxy.
-    - move => x''.
-      case E: (Rltb x'' x); first by apply/out_limit_in; left; move: E => /RltbP.
-      case E': (Rltb y x''); first by apply/out_limit_in; right; move: E' => /RltbP.
-      apply/continuity_pt_limit_in/derivable_continuous_pt.
-      exists (f' x''); apply/diff.
-      by move: E => /RltbP/Rnot_lt_le; move: E' => /RltbP/Rnot_lt_le;lra.
-    rewrite (prp' (f' x'')) /Rdiv; last by apply/diff; lra.
-    rewrite Rmult_assoc Rinv_r; try lra; rewrite Rmult_1_r.
-    by apply/decr; lra.
-  Qed.
-End concave.
-  
-Section strictly_concave.   
-  Definition strictly_concave_on A f :=
-    forall x y z, A x -> A y -> A z -> x < y < z ->
-                    (f z - f y)/(z - y) < (f y - f x)/ (y - x).
-
-  Lemma cncv_scnc A f: strictly_concave_on A f -> concave_on A f.
-  Proof. by move => cnc x y z Ax Ay Az ineq; apply/Rlt_le/cnc. Qed.
-
-  Lemma scnc_subs A B f: (forall x, A x -> B x) ->
-                         strictly_concave_on B f -> strictly_concave_on A f.
-  Proof. by move => subs conc x y z /subs bx /subs yb /subs zb; apply/conc. Qed.
-  
-  Lemma scnc_prp f a b: a < b -> strictly_concave_on (fun x => a <= x <= b) f ->
-                         forall r, 0 < r < 1 -> r * f b + (1 - r) * f a < f (r * b + (1 - r) * a).
-  Proof.
-    move => alb conc r ineq.
-    suff: (1 - r) * (f (r * b + (1 - r) * a) - f a) > r * (f b - f ( r * b + (1 - r) * a)) by lra.
-    apply/Rlt_gt.
-    apply/(Rmult_lt_reg_l (/(1-r))); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    rewrite (Rmult_comm _ r).
-    apply/(Rmult_lt_reg_l (/r)); first by apply/Rinv_0_lt_compat; lra.
-    rewrite -!Rmult_assoc Rinv_l; try lra; rewrite Rmult_1_l.
-    apply/(Rmult_lt_reg_r (/(b - a))); first by apply/Rinv_0_lt_compat; lra.
-    have /=:= conc a (r * b + (1 - r) * a) b.
-    have ->: b - ( r * b + (1 - r) * a) = (1 - r)* (b - a) by ring.
-    have ->: r * b + (1 - r)* a - a = r * (b - a) by ring.
-    rewrite !/Rdiv !Rinv_mult_distr; try lra.
-    suff ineq': a < r * b + (1 - r) * a < b by lra.
-    split; first by apply/Rle_lt_trans/Rplus_lt_le_compat/Rle_refl/Rmult_lt_compat_l/alb; lra.
-    apply/Rlt_le_trans.
-    - by apply/Rplus_le_lt_compat/Rmult_lt_compat_l/alb; try lra; apply/Rle_refl.
-    lra.  
-  Qed.
-
-  Definition strictly_increasing_on (A: R -> Prop) f:=
-    forall x y, A x -> A y -> x < y -> f x < f y.
-
-  Definition strictly_decreasing_on (A: R -> Prop) f:=
-    forall x y, A x -> A y -> x < y -> f y < f x.
-
-  Lemma sdec_sinc A f:
-    strictly_decreasing_on A f <-> strictly_increasing_on A (fun x => - f x).
-  Proof.
-    split => ass x y Ax Ay ineq .
-    - have: f y < f x by apply/ass.
-      lra.
-    have: - f x < - f y by apply/ass.
-    lra.
-  Qed.
-
-    Lemma diff_sdec_scnc_open f f' a b:
-    (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
-    strictly_decreasing_on (fun x => a < x < b) f' ->
-    strictly_concave_on (fun x => a < x < b) f.
-  Proof.
-    move => diff decr x y z /= xineq yineq zineq [] ygx zgy.
-    have diffyz: forall x, y < x < z -> derivable_pt f x.
-    - by move => x'; exists (f' x'); apply diff; lra.
-    have [ | x' [ineqs prp]]:= mean_value_theorem zgy diffyz.
-    - move => x'.
-      case E: (Rltb x' y); first by apply/out_limit_in; left; move: E => /RltbP.
-      case E': (Rltb z x'); first by apply/out_limit_in; right; move: E' => /RltbP.
-      apply/continuity_pt_limit_in/derivable_continuous_pt.
-      exists (f' x'); apply/diff.
-      by move: E => /RltbP/Rnot_lt_le; move: E' => /RltbP/Rnot_lt_le;lra.
-    rewrite (prp (f' x')) /Rdiv; last by apply/diff; lra.
-    rewrite Rmult_assoc Rinv_r; try lra; rewrite Rmult_1_r.
-    have diffxy: forall x', x < x' < y -> derivable_pt f x'.
-    - by move => x''; exists (f' x''); apply diff; lra.
-    have [ | x'' [ineqs' prp']]:= mean_value_theorem ygx diffxy.
-    - move => x''.
-      case E: (Rltb x'' x); first by apply/out_limit_in; left; move: E => /RltbP.
-      case E': (Rltb y x''); first by apply/out_limit_in; right; move: E' => /RltbP.
-      apply/continuity_pt_limit_in/derivable_continuous_pt.
-      exists (f' x''); apply/diff.
-      by move: E => /RltbP/Rnot_lt_le; move: E' => /RltbP/Rnot_lt_le;lra.
-    rewrite (prp' (f' x'')) /Rdiv; last by apply/diff; lra.
-    rewrite Rmult_assoc Rinv_r; try lra; rewrite Rmult_1_r.
-    by apply/decr; lra.
-  Qed.
-End strictly_concave.
-  
-Section ln_strictly_concave.
-  Lemma ln_derivable_pt x: 0 < x -> derivable_pt ln x.
-  Proof.
-    rewrite /derivable_pt/derivable_pt_abs => ineq.
-    by exists (/x); apply/derivable_pt_lim_ln.
-  Qed.
-
-  Lemma ln_scnc: strictly_concave_on (fun x => 0 < x) ln.
-  Proof.
-    suff scnc: forall y, strictly_concave_on (fun x => 0 < x < y) ln.
-    - by move => x y z Ax Ay Az ineqs; apply/(scnc (2 * z)); lra.
-    move => y.
-    apply/diff_sdec_scnc_open => [x ineqs| ]; first by apply/derivable_pt_lim_ln; lra.
-    by move => x' y' g0 _ ineq; apply/Rinv_lt_contravar/ineq/Rmult_lt_0_compat; lra.
-  Qed.
-  
-  Lemma ln_le_inv x y: 0 < x -> 0 < y -> ln x <= ln y -> x <= y.
-  Proof.
-    move => x0 y0.
-    case => [ineq | eq]; first exact/Rlt_le/ln_lt_inv.
-    by rewrite (ln_inv x y) //; exact/Rle_refl.
-  Qed.
-End ln_strictly_concave.
+End mean_value_theorem.

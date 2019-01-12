@@ -395,8 +395,25 @@ Section convex_functions.
     - by do 3 apply/derivable_pt_lim_opp; exact/diff.
     by move => x y Ax Ay ineq; have := inc x y Ax Ay ineq; lra.
   Qed.
-End convex_functions.
-  
+
+  Lemma cnvx_spec f A: convex A -> convex_on A f <->
+    forall x y, A x -> A y -> x <= y ->
+                forall r, 0 < r < 1 -> f (r * x + (1 - r) * y) <= r * f x + (1 - r) * f y.
+  Proof.
+    move => cnvx; rewrite cnvx_cncv cncv_spec //.
+    by split => prp x y Ax Ay ineq r rineq; have := prp x y Ax Ay ineq r rineq;lra.
+  Qed.
+
+  Lemma scvx_spec f A: convex A -> strictly_convex_on A f <->
+    forall x y, A x -> A y -> x < y ->
+                forall r, 0 < r < 1 -> f (r * x + (1 - r) * y) < r * f x + (1 - r) * f y.
+  Proof.
+    move => cnvx; rewrite scvx_scnc scnc_spec //.
+    by split => prp x y Ax Ay ineq r rineq; have := prp x y Ax Ay ineq r rineq;lra.
+  Qed.
+End convex_functions. 
+
+    
 Section ln_strictly_concave.
   Lemma ln_derivable_pt x: 0 < x -> derivable_pt ln x.
   Proof.

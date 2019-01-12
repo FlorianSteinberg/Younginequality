@@ -1,5 +1,5 @@
 Require Import Reals Qreals Psatz.
-From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
+From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Rstruct mean_value_theorem.
 From rlzrs Require Import mf_set.
 From Coquelicot Require Import Coquelicot.
@@ -19,10 +19,18 @@ Local  Notation "'(' a ';' b ']'" := (make_subset (fun x => a < x <= b)).
 Local  Notation "'[' a ';' b ')'" := (make_subset (fun x => a <= x < b)).
 Local  Notation "'(' a ';' b ')'" := (make_subset (fun x => a < x < b)).
 
+
 Section convex_sets.
   Definition convex (M: ModuleSpace R_AbsRing) (A: subset M):= forall x y,
     x \from A -> y \from A -> forall r, 0 < r < 1 -> (plus (scal r x)  (scal (1 - r) y)) \from A.
 
+  Lemma cnvx_intersection (M: ModuleSpace R_AbsRing) (A B: subset M):
+    convex A -> convex B -> convex (intersection A B).
+  Proof.
+    move => cnvx cnvx' x y [Ax Bx] [Ay By] r ineq.
+    by split; [apply/cnvx | apply/cnvx'].
+  Qed.
+    
   Lemma cnvx_ineq x y r: x < y -> 0 < r < 1 -> x < r * x + (1 - r) * y < y.
   Proof.
     intros; split.
@@ -212,7 +220,7 @@ Section concave.
     by rewrite/dist/=/R_dist/=; split_Rabs; lra.
   Qed.
     
-  Lemma diff_decr_cncv_open f f' a b:
+  Lemma diff_decr_cncv f f' a b:
     (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
     decreasing_on (a; b) f' -> concave_on (a; b) f.
   Proof.
@@ -296,6 +304,12 @@ Section strictly_concave.
   Definition strictly_increasing_on (A: subset R) f:=
     forall x y, A x -> A y -> x < y -> f x < f y.
 
+  Lemma sinc_prpr: Proper (@set_equiv R ==> @eqfun R R ==> iff) strictly_increasing_on.
+  Proof.
+    move => A B eqAB f g eqfg.
+    by split => inc x y /eqAB Ax /eqAB Ay ineq;[rewrite -!eqfg | rewrite !eqfg]; apply/inc.
+  Qed.
+
   Definition strictly_decreasing_on (A: subset R) f:=
     forall x y, A x -> A y -> x < y -> f y < f x.
 
@@ -309,7 +323,7 @@ Section strictly_concave.
     lra.
   Qed.
 
-  Lemma diff_sdec_scnc_open f f' a b:
+  Lemma diff_sdec_scnc f f' a b:
     (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
     strictly_decreasing_on (a; b) f' -> strictly_concave_on (a; b) f.
   Proof.
@@ -339,6 +353,49 @@ Section strictly_concave.
     by apply/decr => /=; lra.
   Qed.
 End strictly_concave.
+
+Section convex_functions.  
+  Implicit Types (f: Base R_met -> Base R_met) (A B: subset R).
+  Definition convex_on A f :=
+    forall x y z, A x -> A y -> A z -> x < y < z ->
+                     (f y - f x) * (z - y) <= (f z - f y) * (y - x).
+
+  Lemma cnvx_cncv A f:
+    convex_on A f <-> concave_on A (fun x => - f x).
+  Proof. by split => cnc x y z Ax Ay Az ineq; have := cnc x y z Ax Ay Az ineq; lra. Qed.
+
+  Definition strictly_convex_on A f :=
+    forall x y z, A x -> A y -> A z -> x < y < z ->
+                     (f y - f x) * (z - y) < (f z - f y) * (y - x).
+
+  Lemma scvx_scnc A f:
+    strictly_convex_on A f <-> strictly_concave_on A (fun x => - f x).
+  Proof. by split => cnc x y z Ax Ay Az ineq; have := cnc x y z Ax Ay Az ineq; lra. Qed.
+
+  Lemma diff_sinc_scvx f f' a b:
+    (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
+    strictly_increasing_on (a; b) f' -> strictly_convex_on (a; b) f.
+  Proof.
+    move => diff inc.
+    suff cnvx: strictly_convex_on (a; b) (fun x => - - f x).
+    - by move => x y z Ax Ay Az ineq; have:= cnvx x y z Ax Ay Az ineq; lra.
+    apply/scvx_scnc/diff_sdec_scnc => [x ineq | ].
+    - by do 3 apply/derivable_pt_lim_opp; exact/diff.
+    by move => x y Ax Ay ineq; have := inc x y Ax Ay ineq; lra.
+  Qed.
+
+  Lemma diff_inc_cnvx f f' a b:
+    (forall x, a < x < b -> derivable_pt_lim f x (f' x)) ->
+    increasing_on (a; b) f' -> convex_on (a; b) f.
+  Proof.
+    move => diff inc.
+    suff cnvx: convex_on (a; b) (fun x => - - f x).
+    - by move => x y z Ax Ay Az ineq; have:= cnvx x y z Ax Ay Az ineq; lra.
+    apply/cnvx_cncv/diff_decr_cncv => [x ineq | ].
+    - by do 3 apply/derivable_pt_lim_opp; exact/diff.
+    by move => x y Ax Ay ineq; have := inc x y Ax Ay ineq; lra.
+  Qed.
+End convex_functions.
   
 Section ln_strictly_concave.
   Lemma ln_derivable_pt x: 0 < x -> derivable_pt ln x.
@@ -352,7 +409,7 @@ Section ln_strictly_concave.
     suff scnc: forall y, strictly_concave_on (0; y) ln.
     - by move => x y z /= Ax Ay Az ineqs; apply/(scnc (2 * z)) => /=; lra.
     move => y.
-    apply/diff_sdec_scnc_open => [x ineqs| ]; first by apply/derivable_pt_lim_ln; lra.
+    apply/diff_sdec_scnc => [x ineqs| ]; first by apply/derivable_pt_lim_ln; lra.
     by move => x' y'/= g0 _ ineq; apply/Rinv_lt_contravar/ineq/Rmult_lt_0_compat; lra.
   Qed.
   
@@ -363,4 +420,3 @@ Section ln_strictly_concave.
     by rewrite (ln_inv x y) //; exact/Rle_refl.
   Qed.
 End ln_strictly_concave.
-  

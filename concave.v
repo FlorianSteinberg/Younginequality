@@ -19,11 +19,13 @@ Local  Notation "'(' a ';' b ']'" := (make_subset (fun x => a < x <= b)).
 Local  Notation "'[' a ';' b ')'" := (make_subset (fun x => a <= x < b)).
 Local  Notation "'(' a ';' b ')'" := (make_subset (fun x => a < x < b)).
 
-
 Section convex_sets.
   Definition convex (M: ModuleSpace R_AbsRing) (A: subset M):= forall x y,
     x \from A -> y \from A -> forall r, 0 < r < 1 -> (plus (scal r x)  (scal (1 - r) y)) \from A.
 
+  Lemma all_cnvx M: @convex M All.
+  Proof. done. Qed.
+    
   Lemma cnvx_intersection (M: ModuleSpace R_AbsRing) (A B: subset M):
     convex A -> convex B -> convex (intersection A B).
   Proof.
@@ -182,10 +184,14 @@ Section concave.
     
   Definition increasing_on A f :=
     forall x y, A x -> A y -> x <= y -> f x <= f y.
-
+  
   Lemma incn_inc f: increasing f <-> increasing_on All f.
   Proof. by split => [inc x y _ _ | inc x y]; apply/inc. Qed.
 
+  Lemma inc_subs A B f:
+    A \is_subset_of B -> increasing_on B f -> increasing_on A f.
+  Proof. by move => subs inc x y /subs Bx /subs By; apply/inc. Qed.
+    
   Definition decreasing_on A f :=
     forall x y, A x -> A y -> x <= y -> f y <= f x.
 
@@ -303,7 +309,7 @@ Section strictly_concave.
 
   Definition strictly_increasing_on (A: subset R) f:=
     forall x y, A x -> A y -> x < y -> f x < f y.
-
+  
   Lemma sinc_prpr: Proper (@set_equiv R ==> @eqfun R R ==> iff) strictly_increasing_on.
   Proof.
     move => A B eqAB f g eqfg.
@@ -412,7 +418,6 @@ Section convex_functions.
     by split => prp x y Ax Ay ineq r rineq; have := prp x y Ax Ay ineq r rineq;lra.
   Qed.
 End convex_functions. 
-
     
 Section ln_strictly_concave.
   Lemma ln_derivable_pt x: 0 < x -> derivable_pt ln x.

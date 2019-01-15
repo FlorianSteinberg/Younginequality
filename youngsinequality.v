@@ -1,5 +1,6 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
+From rlzrs Require Import mf_set.
 Require Import Rstruct mean_value_theorem concave.
 From Coquelicot Require Import Coquelicot.
 
@@ -188,6 +189,148 @@ Section Rabs_power.
     - exact/continuous_opp.
     by apply/Rpower_cont; lra.
   Qed.
+
+      Lemma Rapw_diff_pos x: 0 < x -> derivable_pt_lim (Rabs_power^~ p) x (p* `|x`|^(p-1)).
+    Proof.
+      move => ineq eps eg0.
+      have [[delta dg0] prp]:= derivable_pt_lim_power x p ineq eps eg0.
+      have d'g0: 0 < Rmin delta (x/2) by apply/Rmin_pos; lra.
+      exists (mkposreal _ d'g0) => h hneq /= hsze.
+      have sg0: 0 < x + h by have:= Rmin_r delta (x/2); move: hsze; split_Rabs; lra.
+      rewrite /Rabs_power; have -> : (eqr x 0 = false) by apply/eqP; lra.
+      have -> : (eqr (x + h) 0 = false) by apply/eqP; lra.
+      rewrite (Rabs_pos_eq x); try lra.
+      rewrite (Rabs_pos_eq (x + h)); try lra.
+      by apply/prp => /=; try split_Rabs; have := Rmin_l delta (x/2); try lra.
+    Qed.
+
+    Lemma Rapw_diff_neg x: x < 0 -> derivable_pt_lim (Rabs_power^~ p) x (-p * `|x`|^(p-1)).
+    Proof.
+      move => ineq eps eg0.
+      have ineq': 0 < -x by lra.
+      have [[delta dg0] prp]:= derivable_pt_lim_power (-x) p ineq' eps eg0.
+      have d'g0: 0 < Rmin delta (-x/2) by apply/Rmin_pos; lra.
+      exists (mkposreal _ d'g0) => h hneq /= hsze.
+      have sg0: 0 < -x + h by have:= Rmin_r delta (-x/2); move: hsze; split_Rabs; lra.
+      rewrite /Rabs_power; have -> : (eqr x 0 = false) by apply/eqP; lra.
+      have -> : (eqr (x + h) 0 = false).
+      - by apply/eqP; have := Rmin_r delta (-x/2); move: hsze; split_Rabs; lra.
+      rewrite -(Rabs_Ropp x) (Rabs_pos_eq (-x)); try lra.
+      rewrite -(Rabs_Ropp (x + h)) (Rabs_pos_eq (- (x + h))); try lra; last first.
+      - by have := Rmin_r delta (-x/2); split_Rabs; lra.
+      have ->: - (x + h) = -x + -h by lra.
+      have neq: -h <> 0 by lra.
+      have ah: Rabs (-h) < delta by have := Rmin_l delta (-x /2); split_Rabs; lra.
+      have := prp (-h) neq ah; rewrite /Rdiv -Ropp_inv_permute; try lra.
+      split_Rabs; lra.
+    Qed.
+
+    Lemma Rapw_diff_zero: 1 < p -> derivable_pt_lim (Rabs_power^~ p) 0 0.
+    Proof.
+      move => pineq eps eg0.
+      have g0: 0 < (`|eps`|^(/(p-1))) by admit.
+      exists (mkposreal _ g0) => h neq /=.
+      rewrite Rplus_0_l Rapw0 !Rminus_0_r.
+      case: (total_order_T 0 h) => [[ineq | eq]| ineq]; try lra.
+      - rewrite Rabs_pos_eq; try lra; move => ineq'.
+        have ->: `|h`|^p/ h = `|h`|^(p-1).
+        + rewrite /Rabs_power; case: ifP => /eqP; try lra; move => _.
+          by rewrite /Rminus Rpower_plus Rpower_Ropp Rpower_1 Rabs_pos_eq; lra.
+        rewrite Rabs_pos_eq; last exact/Rapw_pos.
+        rewrite -(Rabs_pos_eq eps); try lra.
+        rewrite -(@Rapw_inv eps (p-1)); try lra.
+        apply/Rapw_inc; try lra.
+        by rewrite !Rabs_pos_eq; lra.
+      rewrite -(Rabs_Ropp h) Rabs_pos_eq; try lra; move => ineq'.
+      have ->: `|h`|^p/ h = -`|h`|^(p-1).
+      - suff: `|h`|^p/ (-h) = `|h`|^(p-1) by rewrite /Rdiv -Ropp_inv_permute; lra.
+        rewrite /Rabs_power; case: ifP => /eqP; try lra; move => _.
+        by rewrite -(Rabs_Ropp h)/Rminus Rpower_plus Rpower_Ropp Rpower_1 Rabs_pos_eq; lra.
+      rewrite Rabs_Ropp Rabs_pos_eq; last exact/Rapw_pos.
+      rewrite -(Rabs_pos_eq eps); try lra.
+      rewrite -(@Rapw_inv eps (p-1)); try lra.
+      apply/Rapw_inc; try lra.
+      by rewrite -(Rabs_Ropp h) !Rabs_pos_eq; lra.
+      Grab Existential Variables.
+      by apply/Rapw_lt; lra.
+    Qed.
+      
+    Lemma Rapw_diff x: 1 < p ->
+      derivable_pt_lim (Rabs_power^~ p) x ((if Rleb 0 x then p else -p) * `|x`|^(p-1)).
+    Proof.
+      move => pg1.
+      case: (total_order_T 0 x) => [[ineq | eq] | ineq].
+      - have ->: Rleb 0 x = true by apply/RleP; lra.
+        exact/Rapw_diff_pos.
+      - have ->: Rleb 0 x = true by apply/RleP; lra.
+        by rewrite - eq Rapw0 Rmult_0_r; apply/Rapw_diff_zero.
+      have ->: Rleb 0 x = false by apply/RleP; lra.
+      by apply/Rapw_diff_neg; lra.
+    Qed.
+
+    Lemma Rapw_deriv_inc: 1 < p ->
+      increasing_on All (fun x => (if Rleb 0 x then p else -p) * `|x`|^(p-1)).
+    Proof.
+      move => pineq x y _ _ [ineq | <-]; last exact/Rle_refl.      
+      case: ifP => [/RleP | /RleP /Rnot_le_lt].
+      - case: ifP => [/RleP | /RleP /Rnot_le_lt]; intros; try lra.
+        apply/Rmult_le_compat_l/Rlt_le/Rapw_inc; try lra.
+        by split_Rabs; lra.
+      case: ifP => [/RleP | /RleP /Rnot_le_lt]; intros; try lra.
+      - apply/Rle_trans/Rmult_le_compat_l/Rapw_pos; try lra.
+        apply/Rle_trans; first apply/Rmult_le_compat_r; first exact/Rapw_pos.
+        + have inf: -p <= 0 by lra.
+          by apply/inf.
+        by rewrite Rmult_0_l Rmult_0_r; lra.
+      apply/Rmult_le_compat_neg_l/Rlt_le/Rapw_inc; try lra.
+      by split_Rabs; lra.
+    Qed.
+          
+    Lemma Rapw_cnvx: 1 <= p -> convex_on All (Rabs_power^~ p).
+    Proof.
+      case => [pineq | eq]; last first.
+      - apply/cnvx_spec => // x y _ _ ineq r rineq.
+        rewrite -eq !Rapw_p1.
+        apply/Rle_trans; first exact/Rabs_triang.
+        rewrite !Rabs_mult (Rabs_pos_eq r); try lra.
+        by rewrite (Rabs_pos_eq (1 - r)); lra.
+      suff prp: forall a b, a < b -> convex_on (make_subset (fun x => a < x < b)) (Rabs_power^~ p).
+      - by move => x y z _ _ _ ineq'; apply/(prp (x-1) (z+1)) => /=; try lra.
+      move => a b alb; apply/diff_inc_cnvx => [x ineq | ]; first exact/Rapw_diff.
+      apply/inc_subs/Rapw_deriv_inc; try lra.
+      exact/subs_all.
+    Qed.
+      
+    Lemma Rapw_ineq x y: 1 <= p -> `|(x + y)/2`|^p <= (`|x`|^p + `|y`|^p)/2.
+    Proof.
+      move => ineq.
+      have eq: forall x y, (x + y)/2 = 1/2 * x + (1 - 1/2) * y by move => x' y'; field.
+      have /cnvx_spec prp:= Rapw_cnvx ineq.
+      case: (total_order_T x y) => ineq'.
+      - have xly: x <= y by case: ineq'; lra.
+        by rewrite !eq; apply/prp; try lra.
+      rewrite Rplus_comm [X in _ <= X/2]Rplus_comm.
+      by rewrite !eq; apply/prp; try lra.
+    Qed.
+    
+    Lemma RapwD x y: 1 <= p ->  `|x + y`|^p <= Rpower 2 (p-1) * (`|x`|^p + `|y`|^p).
+    Proof.
+      case => [pg1 | <-]; last first.
+      - rewrite !Rapw_p1 /Rminus Rplus_opp_r Rpower_O; try lra.
+        by rewrite Rmult_1_l; exact/Rabs_triang.
+      suff ineq: `|x + y`|^p <= `|2 * x`|^p / 2 + `|2 * y`|^p / 2.
+      - apply/Rle_trans; first exact/ineq.
+        rewrite !Rapw_mult /Rdiv !Rmult_assoc !(Rmult_comm _ (/2)) -!Rmult_assoc.
+        rewrite -Rmult_plus_distr_l.
+        apply/Rmult_le_compat_r; first exact/Rplus_le_le_0_compat/Rapw_pos/Rapw_pos.
+        rewrite /Rabs_power; case: ifP => /eqP neq; try lra.        
+        rewrite Rabs_pos_eq; try lra.
+        by rewrite /Rminus Rpower_plus Rpower_Ropp Rpower_1; try lra; apply/Rle_refl.
+      apply/Rle_trans.
+      have ->: x + y = (2 * x + 2 * y) /2 by field. 
+      apply/Rapw_ineq => //; try lra.
+      lra.
+    Qed.
 End Rabs_power.
 
 

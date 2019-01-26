@@ -57,8 +57,8 @@ Section mean_value_theorem.
     - rewrite -eq; rewrite /dist/=/R_dist/= -eq in prp.
       have ->: (Rleb a a) by apply/RlebP; lra.
       case: ifP => [ | /RlebP ineq]; first by split_Rabs; lra.
-      by case: ifP => /RleP ineq'; apply/prp; split_Rabs; lra.
-    have ->: Rleb x a = false by apply/RleP; lra.
+      by case: ifP => /RlebP ineq'; apply/prp; split_Rabs; lra.
+    have ->: Rleb x a = false by apply/RlebP; lra.
     case: ifP => /RlebP ineq'.
     - case: ifP => [/RlebP ineq'' | /RlebP/Rnot_le_lt]; last by case: blx; lra.
       by apply/prp; rewrite /dist/=/R_dist/=; split_Rabs; try lra.

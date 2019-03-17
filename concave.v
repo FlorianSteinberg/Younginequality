@@ -1,7 +1,7 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Rstruct mean_value_theorem.
-From rlzrs Require Import mf_set.
+From mf Require Import mf_set.
 From Coquelicot Require Import Coquelicot.
 
 Set Implicit Arguments.

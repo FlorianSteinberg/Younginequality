@@ -1,7 +1,7 @@
 Require Import Reals Qreals Psatz.
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat ssrfun.
 Require Import Rstruct.
-From rlzrs Require Import mf_set.
+From mf Require Import mf_set.
 From Coquelicot Require Import Coquelicot.
 
 Set Implicit Arguments.

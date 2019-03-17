@@ -228,7 +228,7 @@ Section Rabs_power.
     Lemma Rapw_diff_zero: 1 < p -> derivable_pt_lim (Rabs_power^~ p) 0 0.
     Proof.
       move => pineq eps eg0.
-      have g0: 0 < (`|eps`|^(/(p-1))) by admit.
+      have g0: 0 < (`|eps`|^(/(p-1))) by apply/Rapw_lt; lra.
       exists (mkposreal _ g0) => h neq /=.
       rewrite Rplus_0_l Rapw0 !Rminus_0_r.
       case: (total_order_T 0 h) => [[ineq | eq]| ineq]; try lra.
@@ -251,8 +251,6 @@ Section Rabs_power.
       rewrite -(@Rapw_inv eps (p-1)); try lra.
       apply/Rapw_inc; try lra.
       by rewrite -(Rabs_Ropp h) !Rabs_pos_eq; lra.
-      Grab Existential Variables.
-      by apply/Rapw_lt; lra.
     Qed.
       
     Lemma Rapw_diff x: 1 < p ->
